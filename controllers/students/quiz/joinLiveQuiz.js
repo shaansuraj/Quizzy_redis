@@ -23,7 +23,7 @@ const joinLiveQuiz = async (req, res) => {
                 return res.status(404).json({ error: 'Quiz not found in cache' });
             }
 
-            const { quizDetails, roomPassword } = JSON.parse(cachedData.toString());
+            const { quizDetails, roomPassword, duration } = JSON.parse(cachedData.toString());
 
             if (password !== roomPassword) {
                 return res.status(403).json({ error: 'Invalid password' });
@@ -41,17 +41,19 @@ const joinLiveQuiz = async (req, res) => {
                 options: question.options
             }));
 
-            const quizTitle = quizDetails.quizTitle;
-
-            res.json({ 
-                quizTitle, 
-                quizData: sanitizedQuizDetails,
+            const quizDetailsWithoutSensitiveInfo = {
+                quizDetails: {
+                    quizTitle: quizDetails.quizTitle,
+                    quizData: sanitizedQuizDetails
+                },
                 studentDetails: studentResult.rows[0],
                 registrationNumber,
-                roomKey,
-                Duration: quizDetails.Duration,
+                roomKey: roomKey,
+                duration, // Include duration from cached data
                 quizID: quizId
-            });
+            };
+    
+            res.json(quizDetailsWithoutSensitiveInfo);
         });
     } catch (error) {
         console.error('Error joining quiz:', error);
