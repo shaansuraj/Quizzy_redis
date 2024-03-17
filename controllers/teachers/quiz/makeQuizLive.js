@@ -96,8 +96,8 @@ const makeQuizLive = async (req, res) => {
                 const { quizDetails: cachedQuizDetails, roomPassword: cachedRoomPassword, duration: cachedDuration } = JSON.parse(cachedData.toString());
                 quizDetails = cachedQuizDetails;
                 roomPassword = cachedRoomPassword;
-                Duration = cachedDuration;
-                console.log('Cached data:', cachedData.toString());
+                duration;
+                // console.log('Cached data:', cachedData.toString());
             } else {
                 // Fetch quiz details from the database if not cached
                 const quizDetailsFromDB = await getQuizDetailsFromDatabase(quizId, teacherId);
@@ -107,11 +107,11 @@ const makeQuizLive = async (req, res) => {
                 quizDetails = quizDetailsFromDB;
                 roomPassword = generateRandomPassword();
                 // Cache the fetched data for future use
-                memcachedClient.set(roomKey, JSON.stringify({ quizDetails, roomPassword, Duration }));
+                memcachedClient.set(roomKey, JSON.stringify({ quizDetails, roomPassword, duration }));
             }
 
             // Respond to the teacher with the room password, duration, and quiz ID
-            res.json({ "RoomPassword": roomPassword, "Duration": Duration, "quizID": quizId });
+            res.json({ "RoomPassword": roomPassword, "Duration": duration, "quizID": quizId });
         });
 
     } catch (error) {
