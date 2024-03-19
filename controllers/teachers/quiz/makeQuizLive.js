@@ -68,6 +68,7 @@ function generateRandomPassword() {
 }
 
 // makeQuizLive controller with MemCachier caching
+// makeQuizLive controller with MemCachier caching
 const makeQuizLive = async (req, res) => {
     try {
         // Teacher verification
@@ -80,8 +81,8 @@ const makeQuizLive = async (req, res) => {
         const decoded = jwt.verify(token.replace(/^Bearer\s/, ''), process.env.JWT_SECRET);
         const teacherId = decoded.teacherId;
 
-        // Get quiz ID and duration from the request
-        const { quizId, duration } = req.body;
+        // Get quiz ID from the request
+        const { quizId } = req.body;
 
         // Fetch quiz details from MemCachier cache or database
         const roomKey = `quiz-room:${quizId}`;
@@ -93,10 +94,9 @@ const makeQuizLive = async (req, res) => {
             let quizDetails, roomPassword;
             if (cachedData) {
                 // Use cached data if available
-                const { quizDetails: cachedQuizDetails, roomPassword: cachedRoomPassword, duration: cachedDuration } = JSON.parse(cachedData.toString());
+                const { quizDetails: cachedQuizDetails, roomPassword: cachedRoomPassword } = JSON.parse(cachedData.toString());
                 quizDetails = cachedQuizDetails;
                 roomPassword = cachedRoomPassword;
-                duration;
                 // console.log('Cached data:', cachedData.toString());
             } else {
                 // Fetch quiz details from the database if not cached
@@ -107,11 +107,11 @@ const makeQuizLive = async (req, res) => {
                 quizDetails = quizDetailsFromDB;
                 roomPassword = generateRandomPassword();
                 // Cache the fetched data for future use
-                memcachedClient.set(roomKey, JSON.stringify({ quizDetails, roomPassword, duration }));
+                memcachedClient.set(roomKey, JSON.stringify({ quizDetails, roomPassword }));
             }
 
-            // Respond to the teacher with the room password, duration, and quiz ID
-            res.json({ "RoomPassword": roomPassword, "Duration": duration, "quizID": quizId });
+            // Respond to the teacher with the room password and quiz ID
+            res.json({ "RoomPassword": roomPassword, "quizID": quizId });
         });
 
     } catch (error) {
@@ -121,3 +121,4 @@ const makeQuizLive = async (req, res) => {
 };
 
 module.exports = { makeQuizLive, memcachedClient };
+

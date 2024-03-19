@@ -23,7 +23,7 @@ const joinLiveQuiz = async (req, res) => {
                 return res.status(404).json({ error: 'Quiz not found in cache' });
             }
 
-            const { quizDetails, roomPassword, duration } = JSON.parse(cachedData.toString());
+            const { quizDetails, roomPassword } = JSON.parse(cachedData.toString());
 
             if (password !== roomPassword) {
                 return res.status(403).json({ error: 'Invalid password' });
@@ -49,7 +49,6 @@ const joinLiveQuiz = async (req, res) => {
                 studentDetails: studentResult.rows[0],
                 registrationNumber,
                 roomKey: roomKey,
-                duration, // Include duration from cached data
                 quizID: quizId
             };
     

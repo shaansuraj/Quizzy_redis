@@ -14,6 +14,7 @@ const checkResultController = require("../controllers/teachers/quiz/checkResultC
 const myQuizesController = require("../controllers/teachers/quiz/myQuizesController");
 const createQuizController = require("../controllers/quizzes/createQuizController");
 const { makeQuizLive } = require("../controllers/teachers/quiz/makeQuizLive");
+const removeCachedQuizData = require('../controllers/teachers/quiz/endQuiz');
 const joinLiveQuizController = require("../controllers/students/quiz/joinLiveQuiz");
 const getQuizDetailsController = require("../controllers/teachers/quiz/getQuizDetails");
 const scoreCounterController = require("../controllers/students/quiz/scoreCounterController");
@@ -35,6 +36,7 @@ router.post('/dashboard/make-quiz-live', authenticateTeacher, makeQuizLive);
 router.get('/dashboard/previous-quizes', authenticateTeacher, myQuizesController);
 router.get('/dashboard/previous-quizes/:quizId/results', authenticateTeacher, checkResultController);
 router.get('/dashboard/quiz-preview', authenticateTeacher, getQuizDetailsController);
+rourter.get('end-quiz',authenticateTeacher,removeCachedQuizData);
 
 // Student routes
 router.post('/student-login',studentLoginController);
