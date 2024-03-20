@@ -11,7 +11,7 @@ const removeCachedQuizData = async (req, res) => {
     }
 
     try {
-        const quizId = req.body;
+        const {quizId} = req.body;
         const roomKey = `quiz-room:${quizId}`;
 
         memcachedClient.delete(roomKey, (err, result) => {
