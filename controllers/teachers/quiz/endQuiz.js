@@ -25,7 +25,7 @@ const removeCachedQuizData = async (req, res) => {
                 return res.status(500).json({ error: 'Internal Server Error', details: 'MemCachier error' });
             }
             if (result) {
-                return res.json({ message: `Cached data for quiz with ID ${quizId} has been removed successfully` });
+                return res.status(200).json({ message: `Cached data for quiz with ID ${quizId} has been removed successfully` });
             } else {
                 return res.status(404).json({ error: 'Quiz not found in cache' });
             }
