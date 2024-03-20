@@ -14,6 +14,10 @@ const removeCachedQuizData = async (req, res) => {
         const {quizId} = req.body;
         const roomKey = `quiz-room:${quizId}`;
 
+        if(!quizId){
+            return res.status(402).json({ error: 'Please provide the quizId', details: 'Ending quiz error' });
+        }
+
         memcachedClient.delete(roomKey, (err, result) => {
             if (err) {
                 console.error('MemCachier Error:', err);
