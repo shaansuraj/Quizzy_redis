@@ -12,6 +12,7 @@ const removeCachedQuizData = async (req, res) => {
 
     try {
         const {quizId} = req.body;
+        console.log("Quizid", quizId);
         const roomKey = `quiz-room:${quizId}`;
 
         if(!quizId){
