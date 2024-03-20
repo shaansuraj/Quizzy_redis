@@ -25,7 +25,7 @@ const removeCachedQuizData = async (req, res) => {
                 return res.status(500).json({ error: 'Internal Server Error', details: 'MemCachier error' });
             }
             if (result) {
-                return res.status(200).json({ message: `${quizId} has ended` });
+                return res.json({ success: true, quizId: quizId, message: 'Quiz Ended Successfully' });
             } else {
                 return res.status(404).json({ error: 'Quiz not found in cache' });
             }
