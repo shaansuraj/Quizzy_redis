@@ -28,9 +28,10 @@ const studentLoginController = async (req, res) => {
         }
 
         // Check if the androidId matches the one stored in the database
-        if (androidId !== storedAndroidId) {
+        if (androidId !== storedAndroidId && (androidId !== null || storedAndroidId !== null)) {
             return res.status(401).json({ error: 'Use the device used during registration to login only' });
         }
+        
 
         // Generate a JWT token for the authenticated student
         const token = jwt.sign(
