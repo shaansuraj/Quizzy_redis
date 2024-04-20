@@ -2,6 +2,7 @@ const memjs = require('memjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../../../config/db');
 require('dotenv').config();
+const { Mutex } = require('async-mutex');
 
 // Create a MemCachier client
 const memcachedClient = memjs.Client.create(
@@ -11,6 +12,9 @@ const memcachedClient = memjs.Client.create(
         password: process.env.MEMCACHIER_PASSWORD
     }
 );
+
+// Create a mutex instance
+const mutex = new Mutex();
 
 // Function to get Quiz details from the database
 async function getQuizDetailsFromDatabase(quizId, teacherId) {
@@ -68,7 +72,6 @@ function generateRandomPassword() {
 }
 
 // makeQuizLive controller with MemCachier caching
-// makeQuizLive controller with MemCachier caching
 const makeQuizLive = async (req, res) => {
     try {
         // Teacher verification
@@ -84,20 +87,25 @@ const makeQuizLive = async (req, res) => {
         // Get quiz ID from the request
         const { quizId } = req.body;
 
-        // Fetch quiz details from MemCachier cache or database
-        const roomKey = `quiz-room:${quizId}`;
-        memcachedClient.get(roomKey, async (err, cachedData) => {
-            if (err) {
-                console.error('MemCachier Error:', err);
-                return res.status(500).json({ error: 'Internal Server Error', details: 'MemCachier error' });
-            }
+        // Acquire the lock
+        const release = await mutex.acquire();
+
+        try {
+            // Fetch quiz details from MemCachier cache or database
+            const roomKey = `quiz-room:${quizId}`;
+            const cachedData = await new Promise((resolve, reject) => {
+                memcachedClient.get(roomKey, (err, value) => {
+                    if (err) reject(err);
+                    else resolve(value);
+                });
+            });
+
             let quizDetails, roomPassword;
             if (cachedData) {
                 // Use cached data if available
                 const { quizDetails: cachedQuizDetails, roomPassword: cachedRoomPassword } = JSON.parse(cachedData.toString());
                 quizDetails = cachedQuizDetails;
                 roomPassword = cachedRoomPassword;
-                // console.log('Cached data:', cachedData.toString());
             } else {
                 // Fetch quiz details from the database if not cached
                 const quizDetailsFromDB = await getQuizDetailsFromDatabase(quizId, teacherId);
@@ -112,13 +120,14 @@ const makeQuizLive = async (req, res) => {
 
             // Respond to the teacher with the room password and quiz ID
             res.json({ "RoomPassword": roomPassword, "quizID": quizId });
-        });
-
+        } finally {
+            // Release the lock
+            release();
+        }
     } catch (error) {
         console.error('Error in makeQuizLive:', error);
         res.status(500).json({ error: 'Internal Server Error', details: 'Exception caught in makeQuizLive' });
     }
 };
 
-module.exports = { makeQuizLive, memcachedClient };
-
+module.exports = { makeQuizLive, memcachedClient, mutex };

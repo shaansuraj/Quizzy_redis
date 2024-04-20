@@ -1,4 +1,4 @@
-const { memcachedClient } = require('../../teachers/quiz/makeQuizLive');
+const { memcachedClient, mutex } = require('../../teachers/quiz/makeQuizLive');
 const jwt = require('jsonwebtoken');
 const pool = require('../../../config/db');
 
@@ -13,12 +13,19 @@ const joinLiveQuiz = async (req, res) => {
         const registrationNumber = decoded.registrationNumber;
         const { quizId, password } = req.body;
         const roomKey = `quiz-room:${quizId}`;
-        
-        memcachedClient.get(roomKey, async (err, cachedData) => {
-            if (err) {
-                console.error('MemCachier Error:', err);
-                return res.status(500).json({ error: 'Internal Server Error', details: 'MemCachier error' });
-            }
+
+        // Acquire the lock
+        const release = await mutex.acquire();
+
+        try {
+            // Retrieve quiz details from cache
+            const cachedData = await new Promise((resolve, reject) => {
+                memcachedClient.get(roomKey, (err, value) => {
+                    if (err) reject(err);
+                    else resolve(value);
+                });
+            });
+
             if (!cachedData) {
                 return res.status(404).json({ error: 'Quiz not found in cache' });
             }
@@ -29,6 +36,7 @@ const joinLiveQuiz = async (req, res) => {
                 return res.status(403).json({ error: 'Invalid password' });
             }
 
+            // Fetch student details from the database
             const studentQuery = 'SELECT name, batch, branch, section FROM students WHERE registrationnumber = $1';
             const studentResult = await pool.query(studentQuery, [registrationNumber]);
 
@@ -48,12 +56,15 @@ const joinLiveQuiz = async (req, res) => {
                 },
                 studentDetails: studentResult.rows[0],
                 registrationNumber,
-                roomKey: roomKey,
+                roomKey,
                 quizID: quizId
             };
-    
+
             res.json(quizDetailsWithoutSensitiveInfo);
-        });
+        } finally {
+            // Release the lock
+            release();
+        }
     } catch (error) {
         console.error('Error joining quiz:', error);
         if (error instanceof jwt.JsonWebTokenError) {

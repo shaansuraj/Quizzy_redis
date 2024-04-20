@@ -2,14 +2,14 @@ const { memcachedClient } = require('../../teachers/quiz/makeQuizLive');
 const pool = require('../../../config/db');
 
 // Function to calculate score
-function calculateScore(quizData, studentResponses) {
+async function calculateScore(quizData, studentResponses) {
     let correctAttempts = 0;
     let wrongAttempts = 0;
     const totalQuestions = quizData.length;
     let obtainedScore = 0;
     let maximumMarks = 0;
 
-    quizData.forEach(question => {
+    for (const question of quizData) {
         maximumMarks++; // Increment for each question
         const response = studentResponses.find(resp => resp.question === question.question_text);
         if (response) {
@@ -24,7 +24,7 @@ function calculateScore(quizData, studentResponses) {
         } else {
             wrongAttempts++;
         }
-    });
+    }
 
     return { correctAttempts, wrongAttempts, totalQuestions, obtainedScore, maximumMarks };
 }
@@ -55,10 +55,26 @@ const scoreCounter = async (req, res) => {
         }
 
         const { quizDetails, password, roomName, Duration, quizID } = JSON.parse(data.toString());
-        const { correctAttempts, wrongAttempts, totalQuestions, obtainedScore, maximumMarks } = calculateScore(quizDetails.quizData, responses);
+        const { correctAttempts, wrongAttempts, totalQuestions, obtainedScore, maximumMarks } = await calculateScore(quizDetails.quizData, responses);
 
-        const insertScoreQuery = 'INSERT INTO results (registrationnumber, quizid, score) VALUES ($1, $2, $3)';
-        await pool.query(insertScoreQuery, [registrationNumber, quizId, obtainedScore]);
+        // Start a database transaction
+        const client = await pool.connect();
+        await client.query('BEGIN');
+
+        try {
+            const insertScoreQuery = 'INSERT INTO results (registrationnumber, quizid, score) VALUES ($1, $2, $3)';
+            await client.query(insertScoreQuery, [registrationNumber, quizId, obtainedScore]);
+
+            // Commit the transaction
+            await client.query('COMMIT');
+        } catch (error) {
+            // Rollback the transaction in case of an error
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            // Release the client back to the pool
+            client.release();
+        }
 
         res.json({ 
             success: true, 
