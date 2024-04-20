@@ -17,23 +17,28 @@ const joinLiveQuiz = async (req, res) => {
         const { quizId, password } = req.body;
         const roomKey = `quiz-room:${quizId}`;
 
+        // Acquire the lock
+        const release = await mutex.acquire();
+
         let cachedData;
         let retries = 0;
 
-        // Retry loop to handle socket timeout errors
+        // Retry loop to handle potential network errors
         while (retries < MAX_RETRIES) {
             try {
+                // Attempt to retrieve quiz details from cache
                 cachedData = await new Promise((resolve, reject) => {
                     memcachedClient.get(roomKey, (err, value) => {
                         if (err) reject(err);
                         else resolve(value);
                     });
                 });
-                break; // Exit the loop if successful
+                break; // Exit loop if successful
             } catch (error) {
                 console.error('Error retrieving data from Memcached:', error);
                 if (retries === MAX_RETRIES - 1) {
-                    // Max retries reached, return error response
+                    // Max retries reached, release mutex and return error response
+                    release();
                     return res.status(500).json({ error: 'Internal Server Error', details: 'Failed to retrieve data from Memcached' });
                 }
                 retries++;
@@ -42,12 +47,16 @@ const joinLiveQuiz = async (req, res) => {
         }
 
         if (!cachedData) {
+            // Release mutex and return error response
+            release();
             return res.status(404).json({ error: 'Quiz not found in cache' });
         }
 
         const { quizDetails, roomPassword } = JSON.parse(cachedData.toString());
 
         if (password !== roomPassword) {
+            // Release mutex and return error response
+            release();
             return res.status(403).json({ error: 'Invalid password' });
         }
 
@@ -56,6 +65,8 @@ const joinLiveQuiz = async (req, res) => {
         const studentResult = await pool.query(studentQuery, [registrationNumber]);
 
         if (studentResult.rows.length === 0) {
+            // Release mutex and return error response
+            release();
             return res.status(404).json({ error: 'Student details not found' });
         }
 
@@ -74,6 +85,9 @@ const joinLiveQuiz = async (req, res) => {
             roomKey,
             quizID: quizId
         };
+
+        // Release the lock
+        release();
 
         res.json(quizDetailsWithoutSensitiveInfo);
     } catch (error) {

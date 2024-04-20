@@ -1,4 +1,4 @@
-const { memcachedClient } = require('../../teachers/quiz/makeQuizLive');
+const { memcachedClient, mutex } = require('../../teachers/quiz/makeQuizLive');
 const pool = require('../../../config/db');
 
 // Function to calculate score
@@ -29,6 +29,23 @@ async function calculateScore(quizData, studentResponses) {
     return { correctAttempts, wrongAttempts, totalQuestions, obtainedScore, maximumMarks };
 }
 
+// Function to retrieve data from cache with retry logic
+async function retrieveDataFromCacheWithRetry(roomKey, retries = 3, delay = 100) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await new Promise((resolve, reject) => {
+                memcachedClient.get(roomKey, (err, value) => {
+                    if (err) reject(err);
+                    else resolve(value);
+                });
+            });
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
+
 const scoreCounter = async (req, res) => {
     try {
         const { registrationNumber, quizId, responses } = req.body;
@@ -41,50 +58,53 @@ const scoreCounter = async (req, res) => {
             return res.status(400).json({ error: 'You have already appeared for this quiz' });
         }
 
-        // Check if quiz data is cached
-        const roomKey = `quiz-room:${quizId}`;
-        const data = await new Promise((resolve, reject) => {
-            memcachedClient.get(roomKey, (err, value) => {
-                if (err) reject(err);
-                else resolve(value);
-            });
-        });
-
-        if (!data) {
-            return res.status(404).json({ error: 'Quiz not found in cache' });
-        }
-
-        const { quizDetails, password, roomName, Duration, quizID } = JSON.parse(data.toString());
-        const { correctAttempts, wrongAttempts, totalQuestions, obtainedScore, maximumMarks } = await calculateScore(quizDetails.quizData, responses);
-
-        // Start a database transaction
-        const client = await pool.connect();
-        await client.query('BEGIN');
+        // Acquire the lock
+        const release = await mutex.acquire();
 
         try {
-            const insertScoreQuery = 'INSERT INTO results (registrationnumber, quizid, score) VALUES ($1, $2, $3)';
-            await client.query(insertScoreQuery, [registrationNumber, quizId, obtainedScore]);
+            // Check if quiz data is cached
+            const roomKey = `quiz-room:${quizId}`;
+            const data = await retrieveDataFromCacheWithRetry(roomKey);
 
-            // Commit the transaction
-            await client.query('COMMIT');
-        } catch (error) {
-            // Rollback the transaction in case of an error
-            await client.query('ROLLBACK');
-            throw error;
+            if (!data) {
+                return res.status(404).json({ error: 'Quiz not found in cache' });
+            }
+
+            const { quizDetails, password, roomName, Duration, quizID } = JSON.parse(data.toString());
+            const { correctAttempts, wrongAttempts, totalQuestions, obtainedScore, maximumMarks } = await calculateScore(quizDetails.quizData, responses);
+
+            // Start a database transaction
+            const client = await pool.connect();
+            await client.query('BEGIN');
+
+            try {
+                const insertScoreQuery = 'INSERT INTO results (registrationnumber, quizid, score) VALUES ($1, $2, $3)';
+                await client.query(insertScoreQuery, [registrationNumber, quizId, obtainedScore]);
+
+                // Commit the transaction
+                await client.query('COMMIT');
+            } catch (error) {
+                // Rollback the transaction in case of an error
+                await client.query('ROLLBACK');
+                throw error;
+            } finally {
+                // Release the client back to the pool
+                client.release();
+            }
+
+            res.json({ 
+                success: true, 
+                quizTitle: quizDetails.quizTitle, 
+                correctAttempts, 
+                wrongAttempts, 
+                totalQuestions, 
+                obtainedScore, 
+                maximumMarks 
+            });
         } finally {
-            // Release the client back to the pool
-            client.release();
+            // Release the lock
+            release();
         }
-
-        res.json({ 
-            success: true, 
-            quizTitle: quizDetails.quizTitle, 
-            correctAttempts, 
-            wrongAttempts, 
-            totalQuestions, 
-            obtainedScore, 
-            maximumMarks 
-        });
     } catch (error) {
         console.error('Error in scoreCounter:', error);
         res.status(500).json({ error: 'Internal Server Error' });
