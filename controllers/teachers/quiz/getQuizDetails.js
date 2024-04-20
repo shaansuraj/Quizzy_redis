@@ -9,7 +9,7 @@ async function getQuizDetailsController(req, res) {
     const teacherId = decoded.teacherId;
   
     try {
-      const { quizId } = req.params.quizId;
+      const quizId = req.params.quizId;
   
       // Fetch quiz details
       const quizDetailsQuery = `
