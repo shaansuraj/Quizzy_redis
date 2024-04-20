@@ -35,10 +35,8 @@ router.post('/dashboard/add-quiz', authenticateTeacher, createQuizController);
 router.post('/dashboard/make-quiz-live', authenticateTeacher, makeQuizLive);
 router.get('/dashboard/previous-quizes', authenticateTeacher, myQuizesController);
 router.get('/dashboard/previous-quizes/:quizId/results', authenticateTeacher, checkResultController);
-router.get('/dashboard/quiz-preview', authenticateTeacher, (req, res) => {
-    req.query.quizId = req.query.quizId; 
-    getQuizDetailsController(req, res); 
-  });
+router.get('/dashboard/quiz-preview/:quizId', authenticateTeacher, getQuizDetailsController);
+
 router.get('/dashboard/make-quiz-live/:quizId/end-quiz',authenticateTeacher,removeCachedQuizData);
 
 // Student routes
