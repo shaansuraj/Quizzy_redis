@@ -13,6 +13,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.5
+        with:
+          ssh-private-key: ${{ secrets.QUIZZY-KEY }}
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
@@ -20,10 +25,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ec2-15-207-223-35.ap-south-1.compute.amazonaws.com 'cd Quizzy_redis && git pull origin main && npm install && pm2 restart ecosystem.config.js'
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-15-207-223-35.ap-south-1.compute.amazonaws.com 'cd Quizzy_redis && git pull origin main && npm install && pm2 restart ecosystem.config.js'
         env:
           NODE_ENV: production
-          SSH_PRIVATE_KEY: ${{ secrets.QUIZZY_KEY }}
-
