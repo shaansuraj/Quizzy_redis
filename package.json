@@ -36,5 +36,6 @@
   "bugs": {
     "url": "https://github.com/shaansuraj/quizzy-backend/issues"
   },
-  "homepage": "https://github.com/shaansuraj/quizzy-backend#readme"
+  "homepage": "https://github.com/shaansuraj/quizzy-backend#readme",
+  "devDependencies": {}
 }
