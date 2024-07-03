@@ -17,6 +17,11 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+      - name: Add GitHub to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Set up Node.js
         uses: actions/setup-node@v2
@@ -26,8 +31,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Debug SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-15-207-223-35.ap-south-1.compute.amazonaws.com 'echo SSH connection successful'
+
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ec2-user@ec2-15-207-223-35.ap-south-1.compute.amazonaws.com 'cd Quizzy_redis && git pull origin main && npm install && pm2 restart ecosystem.config.js'
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-15-207-223-35.ap-south-1.compute.amazonaws.com '
+            cd Quizzy_redis &&
+            git pull origin main &&
+            npm install &&
+            pm2 restart ecosystem.config.js'
         env:
           NODE_ENV: production
