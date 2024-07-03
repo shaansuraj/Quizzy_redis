@@ -22,7 +22,7 @@ jobs:
         run: npm install
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ec2-15-207-223-35.ap-south-1.compute.amazonaws.com 'cd /path/to/your-repo && git pull origin main && npm install && pm2 restart ecosystem.config.js'
+          ssh -o StrictHostKeyChecking=no ec2-15-207-223-35.ap-south-1.compute.amazonaws.com 'cd Quizzy_redis && git pull origin main && npm install && pm2 restart ecosystem.config.js'
         env:
           NODE_ENV: production
           SSH_PRIVATE_KEY: ${{ secrets.QUIZZY_KEY }}
