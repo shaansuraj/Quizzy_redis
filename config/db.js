@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config(); 
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -8,7 +8,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
   ssl: { rejectUnauthorized: false },
-  max: 20, // Adjust the pool size as needed
+  max: 100, 
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
