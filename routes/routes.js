@@ -7,7 +7,7 @@ const authenticateTeacher = require('../middlewares/teacher/auth/authenticateTea
 const authenticateStudent = require('../middlewares/student/auth/authenticateStudent');
 
 // Controller Imports
-const loginController = require("../controllers/teachers/auth/login");
+const loginController = require("../controllers/teachers/auth/login");  
 const { logoutTeacherController } = require("../controllers/teachers/auth/logout");
 const registerController = require("../controllers/teachers/auth/register");
 const checkResultController = require("../controllers/teachers/quiz/checkResultController");
